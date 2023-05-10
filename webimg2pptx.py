@@ -65,14 +65,16 @@ class WebPageImageDownloader:
                 if f:
                     for chunk in response.iter_content(chunk_size=8192):
                         f.write(chunk)
-        return os.path.basename(filename), url
+        if filename:
+            filename = os.path.basename(filename)
+        return filename, url
 
     def isSameDomain(url1, url2, baseUrl=""):
         isSame = urlparse(url1).netloc == urlparse(url2).netloc
         isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
         return isSame and isbaseUrl
 
-    def downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, pageUrl, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, depth=0):
+    def downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, pageUrl, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, depth=0, usePageUrl=False):
         if depth > maxDepth:
             return
 
@@ -89,8 +91,11 @@ class WebPageImageDownloader:
             if imageUrl:
                 imageUrl = urljoin(pageUrl, imageUrl)
                 fileName, url = WebPageImageDownloader.downloadImage(imageUrl, outputPath, minDownloadSize)
-                if fileName and url:
-                    fileUrls[fileName] = url
+                if fileName:
+                    if usePageUrl:
+                        fileUrls[fileName] = pageUrl
+                    elif url:
+                        fileUrls[fileName] = url
 
         # get links to other pages
         links = driver.find_elements(By.TAG_NAME, 'a')
@@ -107,12 +112,15 @@ class WebPageImageDownloader:
                     if len(pagesUrls)>oldLen:
                         if href.endswith(".jpg") or href.endswith(".jpeg") or href.endswith(".png"):
                             fileName, url = WebPageImageDownloader.downloadImage(href, outputPath, minDownloadSize)
-                            if fileName and url:
-                                fileUrls[fileName] = url
+                            if fileName:
+                                if usePageUrl:
+                                    fileUrls[fileName] = pageUrl
+                                elif url:
+                                    fileUrls[fileName] = url
                         else:
-                            WebPageImageDownloader.downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1)
+                            WebPageImageDownloader.downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl)
 
-    def downloadImagesFromWebPage(url, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1):
+    def downloadImagesFromWebPage(url, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False):
         fileUrls = {}
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -120,7 +128,7 @@ class WebPageImageDownloader:
         driver.set_window_size(1920, 1080)
 
         pagesUrls=set()
-        WebPageImageDownloader.downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth)
+        WebPageImageDownloader.downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl)
         driver.quit()
         return fileUrls
 
@@ -183,10 +191,15 @@ if __name__ == '__main__':
     parser.add_argument('pages', metavar='PAGE', type=str, nargs='+', help='Web pages to download images from')
     parser.add_argument('-t', '--temp', dest='tempPath', type=str, default='.', help='Temporary path')
     parser.add_argument("-o", "--output", help="Output PowerPoint file path")
+    parser.add_argument("-a", "--addUrl", action='store_true', default=False, help="Add URL to the slide")
+    parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help="Use page URL if possible")
     parser.add_argument('--minSize', type=str, help='Minimum size of images to download (format: WIDTHxHEIGHT)')
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
     args = parser.parse_args()
+    if args.usePageUrl:
+        args.addUrl = True
+
 
     # --- download
     minDownloadSize = None
@@ -198,7 +211,7 @@ if __name__ == '__main__':
         os.makedirs(args.tempPath)
 
     for page in args.pages:
-        fileUrls = WebPageImageDownloader.downloadImagesFromWebPage(page, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth)
+        fileUrls = WebPageImageDownloader.downloadImagesFromWebPage(page, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl)
 
     # --- create power point
     prs = PowerPointUtil( args.output )
@@ -208,9 +221,10 @@ if __name__ == '__main__':
             if filename.endswith(('.png', '.jpg', '.jpeg')):
                 prs.addSlide()
                 prs.addPicture(os.path.join(dirpath, filename), 0, 0)
-                text = filename
-                if filename in fileUrls:
-                    text = fileUrls[filename]
-                prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
+                if args.addUrl:
+                    text = filename
+                    if filename in fileUrls:
+                        text = fileUrls[filename]
+                    prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
 
     prs.save()
