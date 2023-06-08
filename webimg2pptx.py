@@ -74,7 +74,7 @@ class WebPageImageDownloader:
         isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
         return isSame and isbaseUrl
 
-    def downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, pageUrl, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, depth=0, usePageUrl=False):
+    def _downloadImagesFromWebPage(driver, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl):
         if depth > maxDepth:
             return
 
@@ -91,7 +91,7 @@ class WebPageImageDownloader:
             if imageUrl:
                 imageUrl = urljoin(pageUrl, imageUrl)
                 fileName, url = WebPageImageDownloader.downloadImage(imageUrl, outputPath, minDownloadSize)
-                if fileName:
+                if fileName and not fileName in fileUrls:
                     if usePageUrl:
                         fileUrls[fileName] = pageUrl
                     elif url:
@@ -105,30 +105,31 @@ class WebPageImageDownloader:
                 try:
                     href = link.get_attribute('href')
                 except:
-                    print("Error occured (href is not found in a tag) at "+str(link))
+                    continue #print("Error occured (href is not found in a tag) at "+str(link))
                 if href and WebPageImageDownloader.isSameDomain(pageUrl, href, baseUrl):
-                    oldLen= len(pagesUrls)
-                    pagesUrls.add(href)
-                    if len(pagesUrls)>oldLen:
+                    if not href in pageUrls:
+                        pageUrls.add(href)
                         if href.endswith(".jpg") or href.endswith(".jpeg") or href.endswith(".png"):
                             fileName, url = WebPageImageDownloader.downloadImage(href, outputPath, minDownloadSize)
-                            if fileName:
+                            if fileName and not fileName in fileUrls:
                                 if usePageUrl:
                                     fileUrls[fileName] = pageUrl
                                 elif url:
                                     fileUrls[fileName] = url
                         else:
-                            WebPageImageDownloader.downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl)
+                            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl)
 
-    def downloadImagesFromWebPage(url, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False):
+
+    def downloadImagesFromWebPage(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False):
         fileUrls = {}
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
         driver = webdriver.Chrome(options=options)
         driver.set_window_size(1920, 1080)
 
-        pagesUrls=set()
-        WebPageImageDownloader.downloadImagesFromWebPage_(driver, fileUrls, pagesUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl)
+        pageUrls=set()
+        for url in urls:
+            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl)
         driver.quit()
         return fileUrls
 
@@ -203,15 +204,14 @@ if __name__ == '__main__':
 
     # --- download
     minDownloadSize = None
-    fileUrls={}
     if args.minSize:
         minDownloadSize = tuple(map(int, args.minSize.split('x')))
 
     if not os.path.exists(args.tempPath):
         os.makedirs(args.tempPath)
 
-    for page in args.pages:
-        fileUrls = WebPageImageDownloader.downloadImagesFromWebPage(page, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl)
+    fileUrls = WebPageImageDownloader.downloadImagesFromWebPage(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl)
+
 
     # --- create power point
     prs = PowerPointUtil( args.output )
@@ -222,9 +222,12 @@ if __name__ == '__main__':
                 prs.addSlide()
                 prs.addPicture(os.path.join(dirpath, filename), 0, 0)
                 if args.addUrl:
-                    text = filename
+                    text = None
+                    if not args.usePageUrl:
+                        text = filename
                     if filename in fileUrls:
                         text = fileUrls[filename]
-                    prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
+                    if text:
+                        prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
 
     prs.save()
