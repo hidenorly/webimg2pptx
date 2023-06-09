@@ -190,7 +190,7 @@ class PowerPointUtil:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Download images from web pages')
     parser.add_argument('pages', metavar='PAGE', type=str, nargs='+', help='Web pages to download images from')
-    parser.add_argument('-t', '--temp', dest='tempPath', type=str, default='.', help='Temporary path')
+    parser.add_argument('-t', '--temp', dest='tempPath', type=str, default='.', help='Temporary path.')
     parser.add_argument("-o", "--output", help="Output PowerPoint file path")
     parser.add_argument("-a", "--addUrl", action='store_true', default=False, help="Add URL to the slide")
     parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help="Use page URL if possible")
@@ -217,17 +217,14 @@ if __name__ == '__main__':
     # --- sort per page url
     perPageImgFiles={}
     pageUrls = []
-    for dirpath, dirnames, filenames in os.walk(args.tempPath):
-        for filename in filenames:
-            if filename.endswith(('.png', '.jpg', '.jpeg')):
-                pageUrl = None
-                if filename in fileUrls:
-                    pageUrl = fileUrls[filename]
-                if pageUrl:
-                    if not pageUrl in perPageImgFiles:
-                        perPageImgFiles[pageUrl] = []
-                        pageUrls.append(pageUrl)
-                    perPageImgFiles[pageUrl].append(filename)
+    for filename in fileUrls.keys():
+        if filename.endswith(('.png', '.jpg', '.jpeg')):
+            pageUrl = fileUrls[filename]
+            if pageUrl:
+                if not pageUrl in perPageImgFiles:
+                    perPageImgFiles[pageUrl] = []
+                    pageUrls.append(pageUrl)
+                perPageImgFiles[pageUrl].append(filename)
 
     pageUrls.sort(key=lambda x: (len(x), x))
 
@@ -235,7 +232,7 @@ if __name__ == '__main__':
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
             prs.addSlide()
-            prs.addPicture(os.path.join(dirpath, filename), 0, 0)
+            prs.addPicture(os.path.join(args.tempPath, filename), 0, 0)
             if args.addUrl:
                 text = None
                 if not args.usePageUrl:
