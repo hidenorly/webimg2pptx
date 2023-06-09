@@ -120,7 +120,7 @@ class WebPageImageDownloader:
                             WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl)
 
 
-    def downloadImagesFromWebPage(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False):
+    def downloadImagesFromWebPages(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False):
         fileUrls = {}
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -201,8 +201,7 @@ if __name__ == '__main__':
     if args.usePageUrl:
         args.addUrl = True
 
-
-    # --- download
+    # --- download 
     minDownloadSize = None
     if args.minSize:
         minDownloadSize = tuple(map(int, args.minSize.split('x')))
@@ -210,24 +209,41 @@ if __name__ == '__main__':
     if not os.path.exists(args.tempPath):
         os.makedirs(args.tempPath)
 
-    fileUrls = WebPageImageDownloader.downloadImagesFromWebPage(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl)
-
+    fileUrls = WebPageImageDownloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl)
 
     # --- create power point
     prs = PowerPointUtil( args.output )
 
+    # --- sort per page url
+    perPageImgFiles={}
+    pageUrls = []
     for dirpath, dirnames, filenames in os.walk(args.tempPath):
         for filename in filenames:
             if filename.endswith(('.png', '.jpg', '.jpeg')):
-                prs.addSlide()
-                prs.addPicture(os.path.join(dirpath, filename), 0, 0)
-                if args.addUrl:
-                    text = None
-                    if not args.usePageUrl:
-                        text = filename
-                    if filename in fileUrls:
-                        text = fileUrls[filename]
-                    if text:
-                        prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
+                pageUrl = None
+                if filename in fileUrls:
+                    pageUrl = fileUrls[filename]
+                if pageUrl:
+                    if not pageUrl in perPageImgFiles:
+                        perPageImgFiles[pageUrl] = []
+                        pageUrls.append(pageUrl)
+                    perPageImgFiles[pageUrl].append(filename)
 
+    pageUrls.sort(key=lambda x: (len(x), x))
+
+    # --- add image file to the slide
+    for aPageUrl in pageUrls:
+        for filename in perPageImgFiles[aPageUrl]:
+            prs.addSlide()
+            prs.addPicture(os.path.join(dirpath, filename), 0, 0)
+            if args.addUrl:
+                text = None
+                if not args.usePageUrl:
+                    text = filename
+                if filename in fileUrls:
+                    text = fileUrls[filename]
+                if text:
+                    prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
+
+    # --- save the ppt file
     prs.save()
