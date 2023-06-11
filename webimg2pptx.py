@@ -74,15 +74,15 @@ class WebPageImageDownloader:
         isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
         return isSame and isbaseUrl
 
-    def _downloadImagesFromWebPage(driver, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl):
+    def _downloadImagesFromWebPage(driver, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut):
         if depth > maxDepth:
             return
 
         driver.get(pageUrl)
-        element = WebDriverWait(driver, 30).until(
+        element = WebDriverWait(driver, timeOut).until(
             EC.presence_of_element_located((By.TAG_NAME, 'a'))
         )
-        element = WebDriverWait(driver, 30).until(
+        element = WebDriverWait(driver, timeOut).until(
             EC.presence_of_element_located((By.TAG_NAME, 'img'))
         )
         # download image
@@ -117,10 +117,10 @@ class WebPageImageDownloader:
                                 elif url:
                                     fileUrls[fileName] = url
                         else:
-                            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl)
+                            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
 
 
-    def downloadImagesFromWebPages(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False):
+    def downloadImagesFromWebPages(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
         fileUrls = {}
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
@@ -129,7 +129,7 @@ class WebPageImageDownloader:
 
         pageUrls=set()
         for url in urls:
-            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl)
+            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl, timeOut)
         driver.quit()
         return fileUrls
 
@@ -197,6 +197,7 @@ if __name__ == '__main__':
     parser.add_argument('--minSize', type=str, help='Minimum size of images to download (format: WIDTHxHEIGHT)')
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
+    parser.add_argument('--timeOut', type=int, default=60, help='Specify time out [sec] if you want to change the default')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
@@ -209,7 +210,7 @@ if __name__ == '__main__':
     if not os.path.exists(args.tempPath):
         os.makedirs(args.tempPath)
 
-    fileUrls = WebPageImageDownloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl)
+    fileUrls = WebPageImageDownloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl, args.timeOut)
 
     # --- create power point
     prs = PowerPointUtil( args.output )
