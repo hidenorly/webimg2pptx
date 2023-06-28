@@ -33,6 +33,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from pptx import Presentation
 from pptx.util import Inches, Pt
 
+globalCache = {}
+
 
 class WebPageImageDownloader:
     def getRandomFilename():
@@ -60,34 +62,36 @@ class WebPageImageDownloader:
     def downloadImage(imageUrl, outputPath, minDownloadSize=None):
         filename = None
         url = None
+        if not imageUrl in globalCache:
+            globalCache[imageUrl] = True
 
-        if imageUrl.strip().endswith(".svg"):
-            with urllib.request.urlopen(imageUrl) as response:
-                svgContent = response.read()
-                url =imageUrl
-                f, filename = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
-                if f:
-                    f.write(svgContent)
-                    f.close()
-        else:
-            size = None
-            response = None
-            try:
-                response = requests.get(imageUrl)
-                if response.status_code == 200:
-                    # check image size
-                    size = WebPageImageDownloader.getImageSize(response.content)
-            except:
-                pass
-
-            if response:
-                if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
+            if imageUrl.strip().endswith(".svg"):
+                with urllib.request.urlopen(imageUrl) as response:
+                    svgContent = response.read()
                     url =imageUrl
                     f, filename = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
                     if f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            f.write(chunk)
+                        f.write(svgContent)
                         f.close()
+            else:
+                size = None
+                response = None
+                try:
+                    response = requests.get(imageUrl)
+                    if response.status_code == 200:
+                        # check image size
+                        size = WebPageImageDownloader.getImageSize(response.content)
+                except:
+                    pass
+
+                if response:
+                    if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
+                        url =imageUrl
+                        f, filename = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
+                        if f:
+                            for chunk in response.iter_content(chunk_size=8192):
+                                f.write(chunk)
+                            f.close()
 
         return filename, url
 
