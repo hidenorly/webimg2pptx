@@ -56,7 +56,7 @@ class WebPageImageDownloader:
         try:
             with Image.open(BytesIO(data)) as img:
                 return img.size
-        except Exception:
+        except:
             return None
 
     def downloadImage(imageUrl, outputPath, minDownloadSize=None):
@@ -113,7 +113,11 @@ class WebPageImageDownloader:
         )
         # download image
         for img_tag in driver.find_elements(By.TAG_NAME, 'img'):
-            imageUrl = img_tag.get_attribute('src')
+            imageUrl = None
+            try:
+                imageUrl = img_tag.get_attribute('src')
+            except:
+                pass
             if imageUrl:
                 imageUrl = urljoin(pageUrl, imageUrl)
                 fileName, url = WebPageImageDownloader.downloadImage(imageUrl, outputPath, minDownloadSize)
@@ -179,19 +183,25 @@ class PowerPointUtil:
         self.currentSlide = self.prs.slides.add_slide(layout)
 
     def addPicture(self, imagePath, x=0, y=0, width=None, height=None, isFitToSlide=True):
-        pic = self.currentSlide.shapes.add_picture(imagePath, x, y)
-        if width and height:
-            pic.width = width
-            pic.height = height
-        else:
-            if isFitToSlide:
-                width, height = pic.image.size
-                if width > height:
-                    pic.width = Inches(self.SLIDE_WIDTH_INCH)
-                    pic.height = Inches(self.SLIDE_WIDTH_INCH * height / width)
-                else:
-                    pic.height = Inches(self.SLIDE_HEIGHT_INCH)
-                    pic.width = Inches(self.SLIDE_HEIGHT_INCH * width / height)
+        pic = None
+        try:
+            pic = self.currentSlide.shapes.add_picture(imagePath, x, y)
+        except:
+            pass
+        if pic:
+            if width and height:
+                pic.width = width
+                pic.height = height
+            else:
+                if isFitToSlide:
+                    width, height = pic.image.size
+                    if width > height:
+                        pic.width = Inches(self.SLIDE_WIDTH_INCH)
+                        pic.height = Inches(self.SLIDE_WIDTH_INCH * height / width)
+                    else:
+                        pic.height = Inches(self.SLIDE_HEIGHT_INCH)
+                        pic.width = Inches(self.SLIDE_HEIGHT_INCH * width / height)
+        return pic
 
     def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True):
         if width==None:
@@ -259,8 +269,8 @@ if __name__ == '__main__':
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
             prs.addSlide()
-            prs.addPicture(os.path.join(args.tempPath, filename), 0, 0)
-            if args.addUrl:
+            pic = prs.addPicture(os.path.join(args.tempPath, filename), 0, 0)
+            if pic and args.addUrl:
                 text = None
                 if not args.usePageUrl:
                     text = filename
