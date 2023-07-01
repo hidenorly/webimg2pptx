@@ -109,13 +109,15 @@ class WebPageImageDownloader:
 
         element = None
         try:
-            driver.get(pageUrl)
-            element = WebDriverWait(driver, timeOut).until(
-                EC.presence_of_element_located((By.TAG_NAME, 'a'))
-            )
-            element = WebDriverWait(driver, timeOut).until(
-                EC.presence_of_element_located((By.TAG_NAME, 'img'))
-            )
+            if not pageUrl in globalCache:
+                globalCache[pageUrl] = True
+                driver.get(pageUrl)
+                element = WebDriverWait(driver, timeOut).until(
+                    EC.presence_of_element_located((By.TAG_NAME, 'a'))
+                )
+                element = WebDriverWait(driver, timeOut).until(
+                    EC.presence_of_element_located((By.TAG_NAME, 'img'))
+                )
         except:
             pass
 
