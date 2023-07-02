@@ -14,6 +14,7 @@
 
 import argparse
 import os
+import re
 import random
 import requests
 import string
@@ -41,9 +42,21 @@ class WebPageImageDownloader:
         letters = string.ascii_lowercase
         return ''.join(random.choice(letters) for i in range(10))
 
+    def getSanitizedFilenameFromUrl(url):
+        parsed_url = urllib.parse.urlparse(url)
+        filename = parsed_url.path.split('/')[-1]
+
+        filename = re.sub(r'[\\/:*?"<>|]', '', filename)
+
+        return filename
+
     def getOutputFileStream(outputPath, url):
         f = None
-        filename = os.path.join(outputPath, os.path.basename(url))
+        filename = WebPageImageDownloader.getSanitizedFilenameFromUrl(url)
+        filename = str(os.path.join(outputPath, filename))
+        if not (filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png") or filename.endswith(".gif") or filename.endswith(".svg")):
+            filename = filename+".jpeg"
+
         try:
             f = open(filename, 'wb')
         except:
