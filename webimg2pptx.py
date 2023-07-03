@@ -201,12 +201,51 @@ class PowerPointUtil:
     def save(self):
         self.prs.save(self.path)
 
+    # layout is full, left, right, top, bottom
+    def getLayoutPosition(self, layout="full"):
+        # for full
+        x=0
+        y=0
+        width = self.prs.slide_width
+        height = self.prs.slide_height
+
+        if layout=="left" or layout=="right":
+            width = width /2
+        if layout=="top" or layout=="bottom":
+            height = height /2
+        if layout=="right":
+            x=width
+        if layout=="bottom":
+            y=height
+
+        return x,y,width,height
+
+    def getLayoutToFitRegion(self, width, height, regionWidth, regionHeight):
+        resultWidth = width
+        resultHeight = height
+
+        if width > height:
+            resultWidth = regionWidth
+            resultHeight = int(regionWidth * height / width+0.99)
+        else:
+            resultHeight = regionHeight
+            resultWidth = int(regionHeight * width / height+0.99)
+
+        return resultWidth, regionHeight
+
+
     def addSlide(self, layout=None):
         if layout == None:
             layout = self.prs.slide_layouts[6]
         self.currentSlide = self.prs.slides.add_slide(layout)
 
-    def addPicture(self, imagePath, x=0, y=0, width=None, height=None, isFitToSlide=True):
+    def addPicture(self, imagePath, x=0, y=0, width=None, height=None, isFitToSlide=True, regionWidth=None, regionHeight=None):
+        if not regionWidth:
+            regionWidth = self.prs.slide_width
+        if not regionHeight:
+            regionHeight = self.prs.slide_height
+        regionWidth = int(regionWidth+0.99)
+        regionHeight = int(regionHeight+0.99)
         pic = None
         try:
             pic = self.currentSlide.shapes.add_picture(imagePath, x, y)
@@ -220,18 +259,20 @@ class PowerPointUtil:
                 if isFitToSlide:
                     width, height = pic.image.size
                     if width > height:
-                        pic.width = Inches(self.SLIDE_WIDTH_INCH)
-                        pic.height = Inches(self.SLIDE_WIDTH_INCH * height / width)
+                        pic.width = regionWidth
+                        pic.height = int(regionWidth * height / width + 0.99)
                     else:
-                        pic.height = Inches(self.SLIDE_HEIGHT_INCH)
-                        pic.width = Inches(self.SLIDE_HEIGHT_INCH * width / height)
+                        pic.height = regionHeight
+                        pic.width = int(regionHeight * width / height + 0.99)
         return pic
 
     def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True):
         if width==None:
-            width=Inches(self.SLIDE_WIDTH_INCH)
+            width=self.prs.slide_width
         if height==None:
-            height=Inches(self.SLIDE_HEIGHT_INCH)
+            height=self.prs.slide_height
+        width = int(width+0.99)
+        height = int(height+0.99)
 
         textbox = self.currentSlide.shapes.add_textbox(x, y, width, height)
         text_frame = textbox.text_frame
@@ -254,6 +295,7 @@ if __name__ == '__main__':
     parser.add_argument("-o", "--output", help="Output PowerPoint file path")
     parser.add_argument("-a", "--addUrl", action='store_true', default=False, help="Add URL to the slide")
     parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help="Use page URL if possible")
+    parser.add_argument("-l", "--layout", action='store', default="full", help="Specify layout full or left or right")
     parser.add_argument('--minSize', type=str, help='Minimum size of images to download (format: WIDTHxHEIGHT)')
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
@@ -290,10 +332,12 @@ if __name__ == '__main__':
     pageUrls.sort(key=lambda x: (len(x), x))
 
     # --- add image file to the slide
+    x, y, regionWidth, regionHeight = prs.getLayoutPosition(args.layout)
+
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
             prs.addSlide()
-            pic = prs.addPicture(os.path.join(args.tempPath, filename), 0, 0)
+            pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight)
             if pic and args.addUrl:
                 text = None
                 if not args.usePageUrl:
@@ -301,7 +345,7 @@ if __name__ == '__main__':
                 if filename in fileUrls:
                     text = fileUrls[filename]
                 if text:
-                    prs.addText(text, Inches(0), Inches(PowerPointUtil.SLIDE_HEIGHT_INCH-0.4), Inches(PowerPointUtil.SLIDE_WIDTH_INCH), Inches(0.4))
+                    prs.addText(text, x, int(regionHeight-Inches(0.4)), regionWidth, Inches(0.4))
 
     # --- save the ppt file
     prs.save()
