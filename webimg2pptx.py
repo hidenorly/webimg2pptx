@@ -54,7 +54,7 @@ class WebPageImageDownloader:
         f = None
         filename = WebPageImageDownloader.getSanitizedFilenameFromUrl(url)
         filename = str(os.path.join(outputPath, filename))
-        if not (filename.endswith(".jpg") or filename.endswith(".jpeg") or filename.endswith(".png") or filename.endswith(".gif") or filename.endswith(".svg")):
+        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
             filename = filename+".jpeg"
 
         try:
@@ -163,7 +163,7 @@ class WebPageImageDownloader:
                     if href and WebPageImageDownloader.isSameDomain(pageUrl, href, baseUrl):
                         if not href in pageUrls:
                             pageUrls.add(href)
-                            if href.endswith(".jpg") or href.endswith(".jpeg") or href.endswith(".png") or href.endswith(".gif") or href.endswith(".svg"):
+                            if href.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
                                 fileName, url = WebPageImageDownloader.downloadImage(href, outputPath, minDownloadSize)
                                 if fileName and not fileName in fileUrls:
                                     if usePageUrl:
@@ -239,7 +239,7 @@ class PowerPointUtil:
             layout = self.prs.slide_layouts[6]
         self.currentSlide = self.prs.slides.add_slide(layout)
 
-    def addPicture(self, imagePath, x=0, y=0, width=None, height=None, isFitToSlide=True, regionWidth=None, regionHeight=None):
+    def addPicture(self, imagePath, x=0, y=0, width=None, height=None, isFitToSlide=True, regionWidth=None, regionHeight=None, isFitWihthinRegion=False):
         if not regionWidth:
             regionWidth = self.prs.slide_width
         if not regionHeight:
@@ -258,12 +258,27 @@ class PowerPointUtil:
             else:
                 if isFitToSlide:
                     width, height = pic.image.size
+                    picWidth = pic.width
+                    picHeight = pic.height
                     if width > height:
-                        pic.width = regionWidth
-                        pic.height = int(regionWidth * height / width + 0.99)
+                        picWidth = regionWidth
+                        picHeight = int(regionWidth * height / width + 0.99)
                     else:
-                        pic.height = regionHeight
-                        pic.width = int(regionHeight * width / height + 0.99)
+                        picHeight = regionHeight
+                        picWidth = int(regionHeight * width / height + 0.99)
+                    if isFitWihthinRegion:
+                        deltaWidth = picWidth - regionWidth
+                        deltaHeight = picHeight - regionHeight
+                        if deltaWidth>0 or deltaHeight>0:
+                            # exceed the region
+                            if deltaWidth > deltaHeight:
+                                picWidth = regionWidth
+                                picHeight = int(regionWidth * height / width + 0.99)
+                            else:
+                                picHeight = regionHeight
+                                picWidth = int(regionHeight * width / height + 0.99)
+                    pic.width = picWidth
+                    pic.height = picHeight
         return pic
 
     def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True):
@@ -321,7 +336,7 @@ if __name__ == '__main__':
     perPageImgFiles={}
     pageUrls = []
     for filename in fileUrls.keys():
-        if filename.endswith(('.png', '.jpg', '.jpeg')):
+        if filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
             pageUrl = fileUrls[filename]
             if pageUrl:
                 if not pageUrl in perPageImgFiles:
@@ -333,11 +348,14 @@ if __name__ == '__main__':
 
     # --- add image file to the slide
     x, y, regionWidth, regionHeight = prs.getLayoutPosition(args.layout)
+    isFitWihthinRegion = True
+    if args.layout == "full":
+        isFitWihthinRegion = False
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
             prs.addSlide()
-            pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight)
+            pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight, isFitWihthinRegion)
             if pic and args.addUrl:
                 text = None
                 if not args.usePageUrl:
