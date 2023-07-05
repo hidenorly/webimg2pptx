@@ -23,6 +23,7 @@ import time
 
 from PIL import Image
 from io import BytesIO
+import cairosvg
 import urllib.request
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -33,6 +34,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from pptx import Presentation
 from pptx.util import Inches, Pt
+
 
 globalCache = {}
 
@@ -62,8 +64,9 @@ class WebPageImageDownloader:
         except:
             filename = os.path.join(outputPath, WebPageImageDownloader.getRandomFilename())
             f = open(filename, 'wb')
+        filePath = filename
         filename = os.path.basename(filename)
-        return f, filename
+        return f, filename, filePath
 
     def getImageSize(data):
         try:
@@ -72,23 +75,37 @@ class WebPageImageDownloader:
         except:
             return None
 
+    def convertSvgToPng(svgPath, pngPath, width=1920, height=1080):
+        try:
+            cairosvg.svg2png(url=svgPath, write_to=pngPath, output_width=width, output_height=height)
+        except:
+            pass
+
+
     def downloadImage(imageUrl, outputPath, minDownloadSize=None):
         filename = None
         url = None
         if not imageUrl in globalCache:
             globalCache[imageUrl] = True
+            filePath = None
 
             if imageUrl.strip().endswith(".svg"):
                 try:
                     with urllib.request.urlopen(imageUrl) as response:
                         svgContent = response.read()
                         url =imageUrl
-                        f, filename = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
+                        f, filename, filePath = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
                         if f:
                             f.write(svgContent)
                             f.close()
                 except:
                     pass
+
+                if os.path.exists(filePath):
+                    newPngPath = filePath+".png"
+                    WebPageImageDownloader.convertSvgToPng(filePath, newPngPath)
+                    if os.path.exists(newPngPath):
+                        filename = newPngPath
             else:
                 size = None
                 response = None
@@ -103,7 +120,7 @@ class WebPageImageDownloader:
                 if response:
                     if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
                         url =imageUrl
-                        f, filename = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
+                        f, filename, filePath = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
                         if f:
                             for chunk in response.iter_content(chunk_size=8192):
                                 f.write(chunk)
