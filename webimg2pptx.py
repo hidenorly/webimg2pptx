@@ -328,6 +328,7 @@ if __name__ == '__main__':
     parser.add_argument("-a", "--addUrl", action='store_true', default=False, help="Add URL to the slide")
     parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help="Use page URL if possible")
     parser.add_argument("-l", "--layout", action='store', default="full", help="Specify layout full or left or right")
+    parser.add_argument("-f", "--fullfit", action='store_true', default=False, help="Specify if want to fit within the slide")
     parser.add_argument('--minSize', type=str, help='Minimum size of images to download (format: WIDTHxHEIGHT)')
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
@@ -365,9 +366,7 @@ if __name__ == '__main__':
 
     # --- add image file to the slide
     x, y, regionWidth, regionHeight = prs.getLayoutPosition(args.layout)
-    isFitWihthinRegion = True
-    if args.layout == "full":
-        isFitWihthinRegion = False
+    isFitWihthinRegion = args.fullfit
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
