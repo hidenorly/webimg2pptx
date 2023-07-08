@@ -140,7 +140,7 @@ class WebPageImageDownloader:
         element = None
         try:
             if not pageUrl in globalCache:
-                globalCache[pageUrl] = True
+                #globalCache[pageUrl] = True
                 driver.get(pageUrl)
                 element = WebDriverWait(driver, timeOut).until(
                     EC.presence_of_element_located((By.TAG_NAME, 'a'))
@@ -193,8 +193,17 @@ class WebPageImageDownloader:
 
     def downloadImagesFromWebPages(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
         fileUrls = {}
+
         options = webdriver.ChromeOptions()
         options.add_argument('--headless')
+        tempDriver = webdriver.Chrome(options=options)
+        userAgent = tempDriver.execute_script("return navigator.userAgent")
+        userAgent = userAgent.replace("headless", "")
+        userAgent = userAgent.replace("Headless", "")
+
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument(f"user-agent={userAgent}")
         driver = webdriver.Chrome(options=options)
         driver.set_window_size(1920, 1080)
 
@@ -202,6 +211,8 @@ class WebPageImageDownloader:
         for url in urls:
             WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl, timeOut)
         driver.quit()
+        tempDriver.quit()
+
         return fileUrls
 
 
