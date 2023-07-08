@@ -321,7 +321,7 @@ class PowerPointUtil:
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Download images from web pages')
+    parser = argparse.ArgumentParser(description='Download images from web pages', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('pages', metavar='PAGE', type=str, nargs='+', help='Web pages to download images from')
     parser.add_argument('-t', '--temp', dest='tempPath', type=str, default='.', help='Temporary path.')
     parser.add_argument("-o", "--output", help="Output PowerPoint file path")
@@ -333,6 +333,8 @@ if __name__ == '__main__':
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
     parser.add_argument('--timeOut', type=int, default=60, help='Specify time out [sec] if you want to change the default')
+    parser.add_argument('--offsetX', type=float, default=0, help='Specify offset x (Inch. max 16. float)')
+    parser.add_argument('--offsetY', type=float, default=0, help='Specify offset y (Inch. max 9. float)')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
@@ -366,6 +368,12 @@ if __name__ == '__main__':
 
     # --- add image file to the slide
     x, y, regionWidth, regionHeight = prs.getLayoutPosition(args.layout)
+    offsetX = Inches(args.offsetX)
+    offsetY = Inches(args.offsetY)
+    x = x + offsetX
+    y = y + offsetY
+    regionWidth = int( regionWidth - offsetX )
+    regionHeight = int( regionHeight - offsetY )
     isFitWihthinRegion = args.fullfit
 
     for aPageUrl in pageUrls:
@@ -379,7 +387,7 @@ if __name__ == '__main__':
                 if filename in fileUrls:
                     text = fileUrls[filename]
                 if text:
-                    prs.addText(text, x, int(regionHeight-Inches(0.4)), regionWidth, Inches(0.4))
+                    prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4))
 
     # --- save the ppt file
     prs.save()
