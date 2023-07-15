@@ -24,6 +24,7 @@ import time
 from PIL import Image
 from io import BytesIO
 import cairosvg
+import pyheif
 import urllib.request
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -37,6 +38,50 @@ from pptx.util import Inches, Pt
 
 
 globalCache = {}
+
+class ImageUtil:
+    def getFilenameWithExt(filename, ext=".jpeg"):
+        filename = os.path.splitext(filename)[0]
+        return filename + ext
+
+    def covertToJpeg(imageFile):
+        outFilename = ImageUtil.getFilenameWithExt(imageFile, ".jpeg")
+        image = None
+        if imageFile.endswith(('.heic', '.HEIC')):
+            try:
+                heifImage = pyheif.read(imageFile)
+                image = Image.frombytes(
+                    heifImage.mode,
+                    heifImage.size,
+                    heifImage.data,
+                    "raw",
+                    heifImage.mode,
+                    heifImage.stride,
+                )
+            except:
+                pass
+        else:
+            try:
+                image = Image.open(imageFile)
+            except:
+                pass
+        if image:
+            image.save(outFilename, "JPEG")
+        return outFilename
+
+    def getImageSize(data):
+        try:
+            with Image.open(BytesIO(data)) as img:
+                return img.size
+        except:
+            return None
+
+    def convertSvgToPng(svgPath, pngPath, width=1920, height=1080):
+        try:
+            cairosvg.svg2png(url=svgPath, write_to=pngPath, output_width=width, output_height=height)
+        except:
+            pass
+
 
 
 class WebPageImageDownloader:
@@ -68,19 +113,6 @@ class WebPageImageDownloader:
         filename = os.path.basename(filename)
         return f, filename, filePath
 
-    def getImageSize(data):
-        try:
-            with Image.open(BytesIO(data)) as img:
-                return img.size
-        except:
-            return None
-
-    def convertSvgToPng(svgPath, pngPath, width=1920, height=1080):
-        try:
-            cairosvg.svg2png(url=svgPath, write_to=pngPath, output_width=width, output_height=height)
-        except:
-            pass
-
 
     def downloadImage(imageUrl, outputPath, minDownloadSize=None):
         filename = None
@@ -89,31 +121,39 @@ class WebPageImageDownloader:
             globalCache[imageUrl] = True
             filePath = None
 
-            if imageUrl.strip().endswith(".svg"):
+            if imageUrl.strip().endswith((".heic", ".HEIC", ".svg")):
                 try:
                     with urllib.request.urlopen(imageUrl) as response:
-                        svgContent = response.read()
+                        imgContent = response.read()
                         url =imageUrl
                         f, filename, filePath = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
                         if f:
-                            f.write(svgContent)
+                            f.write(imgContent)
                             f.close()
                 except:
                     pass
 
                 if os.path.exists(filePath):
-                    newPngPath = filePath+".png"
-                    WebPageImageDownloader.convertSvgToPng(filePath, newPngPath)
-                    if os.path.exists(newPngPath):
-                        filename = newPngPath
+                    if imageUrl.strip().endswith((".svg")):
+                        newPngPath = filePath+".png"
+                        ImageUtil.convertSvgToPng(filePath, newPngPath)
+                        if os.path.exists(newPngPath):
+                            filename = newPngPath
+                    else:
+                        # .heic, .HEIC
+                        newJpegPath = ImageUtil.covertToJpeg(filePath)
+                        if os.path.exists(newJpegPath):
+                            # TODO: minSize check
+                            filename = newJpegPath
             else:
+                # .png, .jpeg, etc.
                 size = None
                 response = None
                 try:
                     response = requests.get(imageUrl)
                     if response.status_code == 200:
                         # check image size
-                        size = WebPageImageDownloader.getImageSize(response.content)
+                        size = ImageUtil.getImageSize(response.content)
                 except:
                     pass
 
