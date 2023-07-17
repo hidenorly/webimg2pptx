@@ -1,16 +1,16 @@
 #   Copyright 2023 hidenorly
 #
-#   Licensed baseUrl the Apache License, Version 2.0 (the "License");
+#   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
 #   You may obtain a copy of the License at
 #
 #       http://www.apache.org/licenses/LICENSE-2.0
 #
 #   Unless required by applicable law or agreed to in writing, software
-#   distributed baseUrl the License is distributed on an "AS IS" BASIS,
+#   distributed under the License is distributed on an "AS IS" BASIS,
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
-#   limitations baseUrl the License.
+#   limitations under the License.
 
 import argparse
 import os
@@ -69,7 +69,14 @@ class ImageUtil:
             image.save(outFilename, "JPEG")
         return outFilename
 
-    def getImageSize(data):
+    def getImageSize(imageFile):
+        try:
+            with Image.open(imageFile) as img:
+                return img.size
+        except:
+            return None
+
+    def getImageSizeFromChunk(data):
         try:
             with Image.open(BytesIO(data)) as img:
                 return img.size
@@ -143,8 +150,9 @@ class WebPageImageDownloader:
                         # .heic, .HEIC
                         newJpegPath = ImageUtil.covertToJpeg(filePath)
                         if os.path.exists(newJpegPath):
-                            # TODO: minSize check
-                            filename = newJpegPath
+                            size = ImageUtil.getImageSize(newJpegPath)
+                            if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
+                                filename = newJpegPath
             else:
                 # .png, .jpeg, etc.
                 size = None
@@ -153,7 +161,7 @@ class WebPageImageDownloader:
                     response = requests.get(imageUrl)
                     if response.status_code == 200:
                         # check image size
-                        size = ImageUtil.getImageSize(response.content)
+                        size = ImageUtil.getImageSizeFromChunk(response.content)
                 except:
                     pass
 
