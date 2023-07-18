@@ -394,6 +394,8 @@ if __name__ == '__main__':
     parser.add_argument('--timeOut', type=int, default=60, help='Specify time out [sec] if you want to change the default')
     parser.add_argument('--offsetX', type=float, default=0, help='Specify offset x (Inch. max 16. float)')
     parser.add_argument('--offsetY', type=float, default=0, help='Specify offset y (Inch. max 9. float)')
+    parser.add_argument('--fontFace', type=str, default="Calibri", help='Specify font face if necessary')
+    parser.add_argument('--fontSize', type=float, default=18.0, help='Specify font size (pt) if necessary')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
@@ -434,6 +436,8 @@ if __name__ == '__main__':
     regionWidth = int( regionWidth - offsetX )
     regionHeight = int( regionHeight - offsetY )
     isFitWihthinRegion = args.fullfit
+    fontFace = args.fontFace
+    fontSize = Inches(args.fontSize)
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
@@ -446,7 +450,7 @@ if __name__ == '__main__':
                 if filename in fileUrls:
                     text = fileUrls[filename]
                 if text:
-                    prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4))
+                    prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4), fontFace, fontSize)
 
     # --- save the ppt file
     prs.save()
