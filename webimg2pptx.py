@@ -35,6 +35,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from pptx import Presentation
 from pptx.util import Inches, Pt
+from pptx.enum.text import PP_ALIGN
 
 
 globalCache = {}
@@ -357,7 +358,7 @@ class PowerPointUtil:
                     pic.height = picHeight
         return pic
 
-    def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True):
+    def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True, textAlign = PP_ALIGN.LEFT):
         if width==None:
             width=self.prs.slide_width
         if height==None:
@@ -376,6 +377,9 @@ class PowerPointUtil:
         if isAdjustSize:
             text_frame.auto_size = True
             textbox.top = y
+
+        for paragraph in text_frame.paragraphs:
+            paragraph.alignment = textAlign
 
 
 
@@ -437,7 +441,10 @@ if __name__ == '__main__':
     regionHeight = int( regionHeight - offsetY )
     isFitWihthinRegion = args.fullfit
     fontFace = args.fontFace
-    fontSize = Inches(args.fontSize)
+    fontSize = Pt(args.fontSize)
+    textAlign = PP_ALIGN.LEFT
+    if args.layout == "right":
+        textAlign = PP_ALIGN.RIGHT
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
@@ -450,7 +457,7 @@ if __name__ == '__main__':
                 if filename in fileUrls:
                     text = fileUrls[filename]
                 if text:
-                    prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4), fontFace, fontSize)
+                    prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4), fontFace, fontSize, True, textAlign)
 
     # --- save the ppt file
     prs.save()
