@@ -36,7 +36,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
-
+from pptx.enum.text import MSO_ANCHOR
 
 globalCache = {}
 
@@ -358,7 +358,7 @@ class PowerPointUtil:
                     pic.height = picHeight
         return pic
 
-    def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True, textAlign = PP_ALIGN.LEFT):
+    def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True, textAlign = PP_ALIGN.LEFT, isVerticalCenter=False):
         if width==None:
             width=self.prs.slide_width
         if height==None:
@@ -377,6 +377,9 @@ class PowerPointUtil:
         if isAdjustSize:
             text_frame.auto_size = True
             textbox.top = y
+
+        if isVerticalCenter:
+            text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
 
         for paragraph in text_frame.paragraphs:
             paragraph.alignment = textAlign
@@ -400,6 +403,7 @@ if __name__ == '__main__':
     parser.add_argument('--offsetY', type=float, default=0, help='Specify offset y (Inch. max 9. float)')
     parser.add_argument('--fontFace', type=str, default="Calibri", help='Specify font face if necessary')
     parser.add_argument('--fontSize', type=float, default=18.0, help='Specify font size (pt) if necessary')
+    parser.add_argument('--title', type=str, default=None, help='Specify title if necessary')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
@@ -445,11 +449,18 @@ if __name__ == '__main__':
     textAlign = PP_ALIGN.LEFT
     if args.layout == "right":
         textAlign = PP_ALIGN.RIGHT
+    titleSize = args.offsetY*72.0
+    if titleSize<100 or titleSize>400000:
+        titleSize = Pt(40)
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
             prs.addSlide()
             pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight, isFitWihthinRegion)
+            # Add Title
+            if args.title:
+                prs.addText(args.title, x, 0, regionWidth, offsetY, fontFace, titleSize, True, textAlign, True)
+            # Add filename(URL) at bottom
             if pic and args.addUrl:
                 text = None
                 if not args.usePageUrl:
