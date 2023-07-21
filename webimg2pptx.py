@@ -390,11 +390,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Download images from web pages', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('pages', metavar='PAGE', type=str, nargs='+', help='Web pages to download images from')
     parser.add_argument('-t', '--temp', dest='tempPath', type=str, default='.', help='Temporary path.')
-    parser.add_argument("-o", "--output", help="Output PowerPoint file path")
-    parser.add_argument("-a", "--addUrl", action='store_true', default=False, help="Add URL to the slide")
-    parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help="Use page URL if possible")
-    parser.add_argument("-l", "--layout", action='store', default="full", help="Specify layout full or left or right")
-    parser.add_argument("-f", "--fullfit", action='store_true', default=False, help="Specify if want to fit within the slide")
+    parser.add_argument("-o", "--output", default='output.pptx', help="Output PowerPoint file path")
+    parser.add_argument("-a", "--addUrl", action='store_true', default=False, help='Add URL to the slide')
+    parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help='Use page URL if possible')
+    parser.add_argument("-l", "--layout", action='store', default='full', help='Specify layout full or left or right')
+    parser.add_argument("-f", "--fullfit", action='store_true', default=False, help='Specify if want to fit within the slide')
     parser.add_argument('--minSize', type=str, help='Minimum size of images to download (format: WIDTHxHEIGHT)')
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
@@ -404,6 +404,7 @@ if __name__ == '__main__':
     parser.add_argument('--fontFace', type=str, default="Calibri", help='Specify font face if necessary')
     parser.add_argument('--fontSize', type=float, default=18.0, help='Specify font size (pt) if necessary')
     parser.add_argument('--title', type=str, default=None, help='Specify title if necessary')
+    parser.add_argument('--titleSize', type=float, default=None, help='Specify title size if necessary')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
@@ -443,15 +444,25 @@ if __name__ == '__main__':
     y = y + offsetY
     regionWidth = int( regionWidth - offsetX )
     regionHeight = int( regionHeight - offsetY )
+
     isFitWihthinRegion = args.fullfit
+
     fontFace = args.fontFace
     fontSize = Pt(args.fontSize)
+
     textAlign = PP_ALIGN.LEFT
     if args.layout == "right":
         textAlign = PP_ALIGN.RIGHT
-    titleSize = args.offsetY*72.0
+
+    titleSize = args.offsetY*72.0 #Inch to Pt
+    if args.titleSize:
+        titleSize = Pt(args.titleSize)
     if titleSize<100 or titleSize>400000:
-        titleSize = Pt(40)
+        titleSize = Pt(40) # fail safe
+
+    titleHeight = offsetY
+    if titleHeight==0:
+        titleHeight = titleSize
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
@@ -459,7 +470,7 @@ if __name__ == '__main__':
             pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight, isFitWihthinRegion)
             # Add Title
             if args.title:
-                prs.addText(args.title, x, 0, regionWidth, offsetY, fontFace, titleSize, True, textAlign, True)
+                prs.addText(args.title, x, 0, regionWidth, titleHeight, fontFace, titleSize, True, textAlign, True)
             # Add filename(URL) at bottom
             if pic and args.addUrl:
                 text = None
@@ -468,6 +479,7 @@ if __name__ == '__main__':
                 if filename in fileUrls:
                     text = fileUrls[filename]
                 if text:
+                    # TODO: Calc the 0.4
                     prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4), fontFace, fontSize, True, textAlign)
 
     # --- save the ppt file
