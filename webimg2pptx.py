@@ -376,19 +376,23 @@ class PowerPointUtil:
         exFormats = exFormat.split(",")
         for anFormat in exFormats:
             cmdarg = anFormat.split(":")
-            if cmdarg[0]=="color":
-                font.color.rgb = PowerPointUtil.nameToRgb(cmdarg[1])
-            elif cmdarg[0]=="effect":
+            cmd = cmdarg[0]
+            val = cmdarg[1]
+            if cmd=="color":
+                font.color.rgb = PowerPointUtil.nameToRgb(val)
+            elif cmd=="face":
+                font.name = val
+            elif cmd=="effect":
                 # TODO: fix
                 shadow = textbox.shadow
-                shadow.inherit = True
                 shadow.visible = True
-                shadow.distance = Pt(10)
-                shadow.shadow_type = 1
-                shadow.angle = 45
+                shadow.shadow_type = 'outer'
+                shadow.style = 'outer'
                 shadow.blur_radius = Pt(5)
+                shadow.distance = Pt(2)
+                shadow.angle = 45
                 shadow.color = MSO_THEME_COLOR_INDEX.ACCENT_5
-                #shadow.color.rgb = RGBColor(0, 0, 0)
+                shadow.transparency = 0
 
     def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True, textAlign = PP_ALIGN.LEFT, isVerticalCenter=False, exFormat=None):
         if width==None:
