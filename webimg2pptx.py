@@ -37,6 +37,11 @@ from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.enum.text import MSO_ANCHOR
+from pptx.enum.text import MSO_AUTO_SIZE
+from pptx.enum.dml import MSO_THEME_COLOR_INDEX
+from pptx.dml.color import RGBColor
+
+import webcolors
 
 globalCache = {}
 
@@ -358,7 +363,34 @@ class PowerPointUtil:
                     pic.height = picHeight
         return pic
 
-    def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True, textAlign = PP_ALIGN.LEFT, isVerticalCenter=False):
+    def nameToRgb(name):
+        result = RGBColor(0,0,0)
+        try:
+            rgb = webcolors.name_to_rgb(name)
+            result = RGBColor(rgb.red, rgb.green, rgb.blue)
+        except:
+            pass
+        return result
+
+    def applyExFormat(exFormat, textbox, font, text_frame):
+        exFormats = exFormat.split(",")
+        for anFormat in exFormats:
+            cmdarg = anFormat.split(":")
+            if cmdarg[0]=="color":
+                font.color.rgb = PowerPointUtil.nameToRgb(cmdarg[1])
+            elif cmdarg[0]=="effect":
+                # TODO: fix
+                shadow = textbox.shadow
+                shadow.inherit = True
+                shadow.visible = True
+                shadow.distance = Pt(10)
+                shadow.shadow_type = 1
+                shadow.angle = 45
+                shadow.blur_radius = Pt(5)
+                shadow.color = MSO_THEME_COLOR_INDEX.ACCENT_5
+                #shadow.color.rgb = RGBColor(0, 0, 0)
+
+    def addText(self, text, x=Inches(0), y=Inches(0), width=None, height=None, fontFace='Calibri', fontSize=Pt(18), isAdjustSize=True, textAlign = PP_ALIGN.LEFT, isVerticalCenter=False, exFormat=None):
         if width==None:
             width=self.prs.slide_width
         if height==None:
@@ -373,6 +405,9 @@ class PowerPointUtil:
         font.name = fontFace
         font.size = fontSize
         theHeight = textbox.height
+
+        if exFormat:
+            PowerPointUtil.applyExFormat(exFormat, textbox, font, text_frame)
         
         if isAdjustSize:
             text_frame.auto_size = True
@@ -405,6 +440,7 @@ if __name__ == '__main__':
     parser.add_argument('--fontSize', type=float, default=18.0, help='Specify font size (pt) if necessary')
     parser.add_argument('--title', type=str, default=None, help='Specify title if necessary')
     parser.add_argument('--titleSize', type=float, default=None, help='Specify title size if necessary')
+    parser.add_argument('--titleFormat', type=str, default=None, help='Specify title format if necessary e.g. color:white')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
@@ -470,7 +506,7 @@ if __name__ == '__main__':
             pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight, isFitWihthinRegion)
             # Add Title
             if args.title:
-                prs.addText(args.title, x, 0, regionWidth, titleHeight, fontFace, titleSize, True, textAlign, True)
+                prs.addText(args.title, x, 0, regionWidth, titleHeight, fontFace, titleSize, True, textAlign, True, args.titleFormat)
             # Add filename(URL) at bottom
             if pic and args.addUrl:
                 text = None
