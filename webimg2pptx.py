@@ -377,13 +377,17 @@ class PowerPointUtil:
         for anFormat in exFormats:
             cmdarg = anFormat.split(":")
             cmd = cmdarg[0]
-            val = cmdarg[1]
+            val = None
+            if len(cmdarg)>=2:
+                val = cmdarg[1]
             if cmd=="color":
                 font.color.rgb = PowerPointUtil.nameToRgb(val)
             elif cmd=="face":
                 font.name = val
             elif cmd=="size":
                 font.size = Pt(float(val))
+            elif cmd=="bold":
+                font.bold = True
             elif cmd=="effect":
                 # TODO: fix
                 shadow = textbox.shadow
@@ -446,7 +450,7 @@ if __name__ == '__main__':
     parser.add_argument('--fontSize', type=float, default=18.0, help='Specify font size (pt) if necessary')
     parser.add_argument('--title', type=str, default=None, help='Specify title if necessary')
     parser.add_argument('--titleSize', type=float, default=None, help='Specify title size if necessary')
-    parser.add_argument('--titleFormat', type=str, default=None, help='Specify title format if necessary e.g. color:white,face:Calibri,size:40')
+    parser.add_argument('--titleFormat', type=str, default=None, help='Specify title format if necessary e.g. color:white,face:Calibri,size:40,bold')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
