@@ -98,11 +98,35 @@ class ImageUtil:
 
 
 class WebPageImageDownloader:
-    def getRandomFilename():
+    def __init__(self, width=1920, height=1080):
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        tempDriver = webdriver.Chrome(options=options)
+        userAgent = tempDriver.execute_script("return navigator.userAgent")
+        userAgent = userAgent.replace("headless", "")
+        userAgent = userAgent.replace("Headless", "")
+
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        options.add_argument(f"user-agent={userAgent}")
+        driver = webdriver.Chrome(options=options)
+        driver.set_window_size(width, height)
+        self.driver = driver
+        self._driver = tempDriver
+
+    def close(self):
+        if self.driver:
+            self.driver.close()
+            self.driver = None
+        if self._driver:
+            self._driver.close()
+            self._driver = None
+
+    def getRandomFilename(self):
         letters = string.ascii_lowercase
         return ''.join(random.choice(letters) for i in range(10))
 
-    def getSanitizedFilenameFromUrl(url):
+    def getSanitizedFilenameFromUrl(self, url):
         parsed_url = urllib.parse.urlparse(url)
         filename = parsed_url.path.split('/')[-1]
 
@@ -110,9 +134,9 @@ class WebPageImageDownloader:
 
         return filename
 
-    def getOutputFileStream(outputPath, url):
+    def getOutputFileStream(self, outputPath, url):
         f = None
-        filename = WebPageImageDownloader.getSanitizedFilenameFromUrl(url)
+        filename = self.getSanitizedFilenameFromUrl(url)
         filename = str(os.path.join(outputPath, filename))
         if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
             filename = filename+".jpeg"
@@ -120,14 +144,14 @@ class WebPageImageDownloader:
         try:
             f = open(filename, 'wb')
         except:
-            filename = os.path.join(outputPath, WebPageImageDownloader.getRandomFilename())
+            filename = os.path.join(outputPath, self.getRandomFilename())
             f = open(filename, 'wb')
         filePath = filename
         filename = os.path.basename(filename)
         return f, filename, filePath
 
 
-    def downloadImage(imageUrl, outputPath, minDownloadSize=None):
+    def downloadImage(self, imageUrl, outputPath, minDownloadSize=None):
         filename = None
         url = None
         if not imageUrl in globalCache:
@@ -139,7 +163,7 @@ class WebPageImageDownloader:
                     with urllib.request.urlopen(imageUrl) as response:
                         imgContent = response.read()
                         url =imageUrl
-                        f, filename, filePath = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
+                        f, filename, filePath = self.getOutputFileStream(outputPath, imageUrl)
                         if f:
                             f.write(imgContent)
                             f.close()
@@ -174,7 +198,7 @@ class WebPageImageDownloader:
                 if response:
                     if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
                         url =imageUrl
-                        f, filename, filePath = WebPageImageDownloader.getOutputFileStream(outputPath, imageUrl)
+                        f, filename, filePath = self.getOutputFileStream(outputPath, imageUrl)
                         if f:
                             for chunk in response.iter_content(chunk_size=8192):
                                 f.write(chunk)
@@ -182,13 +206,15 @@ class WebPageImageDownloader:
 
         return filename, url
 
-    def isSameDomain(url1, url2, baseUrl=""):
+    def isSameDomain(self, url1, url2, baseUrl=""):
         isSame = urlparse(url1).netloc == urlparse(url2).netloc
         isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
         return isSame and isbaseUrl
 
-    def _downloadImagesFromWebPage(driver, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut):
-        if depth > maxDepth:
+    def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut):
+        driver = self.driver
+
+        if driver==None or depth > maxDepth:
             return
 
         element = None
@@ -215,7 +241,7 @@ class WebPageImageDownloader:
                     pass
                 if imageUrl:
                     imageUrl = urljoin(pageUrl, imageUrl)
-                    fileName, url = WebPageImageDownloader.downloadImage(imageUrl, outputPath, minDownloadSize)
+                    fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize)
                     if fileName and not fileName in fileUrls:
                         if usePageUrl:
                             fileUrls[fileName] = pageUrl
@@ -231,41 +257,30 @@ class WebPageImageDownloader:
                         href = link.get_attribute('href')
                     except:
                         continue #print("Error occured (href is not found in a tag) at "+str(link))
-                    if href and WebPageImageDownloader.isSameDomain(pageUrl, href, baseUrl):
+                    if href and self.isSameDomain(pageUrl, href, baseUrl):
                         if not href in pageUrls:
                             pageUrls.add(href)
                             if href.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
-                                fileName, url = WebPageImageDownloader.downloadImage(href, outputPath, minDownloadSize)
+                                fileName, url = self.downloadImage(href, outputPath, minDownloadSize)
                                 if fileName and not fileName in fileUrls:
                                     if usePageUrl:
                                         fileUrls[fileName] = pageUrl
                                     elif url:
                                         fileUrls[fileName] = url
                             else:
-                                WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
+                                self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
 
 
-    def downloadImagesFromWebPages(urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
+
+
+    def downloadImagesFromWebPages(self, urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
         fileUrls = {}
 
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        tempDriver = webdriver.Chrome(options=options)
-        userAgent = tempDriver.execute_script("return navigator.userAgent")
-        userAgent = userAgent.replace("headless", "")
-        userAgent = userAgent.replace("Headless", "")
-
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        options.add_argument(f"user-agent={userAgent}")
-        driver = webdriver.Chrome(options=options)
-        driver.set_window_size(1920, 1080)
+        driver = self.driver
 
         pageUrls=set()
         for url in urls:
-            WebPageImageDownloader._downloadImagesFromWebPage(driver, fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl, timeOut)
-        driver.quit()
-        tempDriver.quit()
+            self._downloadImagesFromWebPage(fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl, timeOut)
 
         return fileUrls
 
@@ -463,7 +478,10 @@ if __name__ == '__main__':
     if not os.path.exists(args.tempPath):
         os.makedirs(args.tempPath)
 
-    fileUrls = WebPageImageDownloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl, args.timeOut)
+    downloader = WebPageImageDownloader()
+    fileUrls = downloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl, args.timeOut)
+    downloader.close()
+    downloader = None
 
     # --- create power point
     prs = PowerPointUtil( args.output )
