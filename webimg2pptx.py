@@ -170,7 +170,7 @@ class WebPageImageDownloader:
                 except:
                     pass
 
-                if os.path.exists(filePath):
+                if filePath and os.path.exists(filePath):
                     if imageUrl.strip().endswith((".svg")):
                         newPngPath = filePath+".png"
                         ImageUtil.convertSvgToPng(filePath, newPngPath)
