@@ -10,6 +10,7 @@ pip install python-pptx
 pip install cairosvg
 brew install libffi libheif
 pip install git+https://github.com/david-poirier-csn/pyheif.git
+pip install webcolors
 ```
 
 ## How to use
