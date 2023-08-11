@@ -18,13 +18,10 @@ import re
 import random
 import requests
 import string
-import random
 import time
 
-from PIL import Image
-from io import BytesIO
-import cairosvg
-import pyheif
+from ImageUtil import ImageUtil
+
 import urllib.request
 from urllib.parse import urljoin
 from urllib.parse import urlparse
@@ -44,57 +41,6 @@ from pptx.dml.color import RGBColor
 import webcolors
 
 globalCache = {}
-
-class ImageUtil:
-    def getFilenameWithExt(filename, ext=".jpeg"):
-        filename = os.path.splitext(filename)[0]
-        return filename + ext
-
-    def covertToJpeg(imageFile):
-        outFilename = ImageUtil.getFilenameWithExt(imageFile, ".jpeg")
-        image = None
-        if imageFile.endswith(('.heic', '.HEIC')):
-            try:
-                heifImage = pyheif.read(imageFile)
-                image = Image.frombytes(
-                    heifImage.mode,
-                    heifImage.size,
-                    heifImage.data,
-                    "raw",
-                    heifImage.mode,
-                    heifImage.stride,
-                )
-            except:
-                pass
-        else:
-            try:
-                image = Image.open(imageFile)
-            except:
-                pass
-        if image:
-            image.save(outFilename, "JPEG")
-        return outFilename
-
-    def getImageSize(imageFile):
-        try:
-            with Image.open(imageFile) as img:
-                return img.size
-        except:
-            return None
-
-    def getImageSizeFromChunk(data):
-        try:
-            with Image.open(BytesIO(data)) as img:
-                return img.size
-        except:
-            return None
-
-    def convertSvgToPng(svgPath, pngPath, width=1920, height=1080):
-        try:
-            cairosvg.svg2png(url=svgPath, write_to=pngPath, output_width=width, output_height=height)
-        except:
-            pass
-
 
 
 class WebPageImageDownloader:
