@@ -61,12 +61,15 @@ class WebPageImageDownloader:
         self._driver = tempDriver
 
     def close(self):
-        if self.driver:
-            self.driver.close()
-            self.driver = None
-        if self._driver:
-            self._driver.close()
-            self._driver = None
+        try:
+            if self.driver:
+                self.driver.close()
+                self.driver = None
+            if self._driver:
+                self._driver.close()
+                self._driver = None
+        except:
+            pass
 
     def getRandomFilename(self):
         letters = string.ascii_lowercase
@@ -104,7 +107,8 @@ class WebPageImageDownloader:
             globalCache[imageUrl] = True
             filePath = None
 
-            if imageUrl.strip().endswith((".heic", ".HEIC", ".svg")):
+            ext = WebPageImageDownloader.getExtFromUrl(imageUrl)
+            if ext.endswith((".heic", ".HEIC", ".svg")):
                 try:
                     with urllib.request.urlopen(imageUrl) as response:
                         imgContent = response.read()
@@ -117,7 +121,7 @@ class WebPageImageDownloader:
                     pass
 
                 if filePath and os.path.exists(filePath):
-                    if imageUrl.strip().endswith((".svg")):
+                    if ext.endswith((".svg")):
                         newPngPath = filePath+".png"
                         ImageUtil.convertSvgToPng(filePath, newPngPath)
                         if os.path.exists(newPngPath):
@@ -141,7 +145,7 @@ class WebPageImageDownloader:
                 except:
                     pass
 
-                if response:
+                if response and response.status_code == 200:
                     if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
                         url =imageUrl
                         f, filename, filePath = self.getOutputFileStream(outputPath, imageUrl)
@@ -149,6 +153,20 @@ class WebPageImageDownloader:
                             for chunk in response.iter_content(chunk_size=8192):
                                 f.write(chunk)
                             f.close()
+                else:
+                    # fallback...
+                    print(f'Failed to download {imageUrl}')
+                    #try:
+                    #    self.driver.get(imageUrl)
+                    #    filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
+                    #    filePath=os.path.join(outputPath, filename)
+                    #    print(f'filename:{filename}')
+                    #    self.driver.save_screenshot(filePath)
+                    #    print(f'screenshot done at {filePath}')
+                    #    url = imageUrl
+                    #except Exception as e:
+                    #    print(f"Error while processing {imageUrl}: {e}")
+
 
         return filename, url
 
@@ -157,66 +175,88 @@ class WebPageImageDownloader:
         isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
         return isSame and isbaseUrl
 
-    def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut):
+    def getFilenameFromUrl(url):
+        filename = ""
+        pos = url.find("?")
+        if pos!=-1:
+            url = url[0:pos]
+        pos = url.rfind("/")
+        if pos!=-1:
+            filename = url[pos+1:]
+        return str(filename)
+
+    def getExtFromUrl(url):
+        ext=""
+        filename = WebPageImageDownloader.getFilenameFromUrl(url)
+        pos = filename.rfind(".")
+        if pos!=-1:
+            ext = filename[pos:]
+        return str(ext)
+
+
+    def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut,  scrollPauseTime = 2):
         driver = self.driver
 
         if driver==None or depth > maxDepth:
             return
 
-        element = None
-        try:
-            if not pageUrl in globalCache:
-                #globalCache[pageUrl] = True
+        if not pageUrl in globalCache:
+            #globalCache[pageUrl] = True
+            try:
                 driver.get(pageUrl)
-                element = WebDriverWait(driver, timeOut).until(
-                    EC.presence_of_element_located((By.TAG_NAME, 'a'))
-                )
-                element = WebDriverWait(driver, timeOut).until(
-                    EC.presence_of_element_located((By.TAG_NAME, 'img'))
-                )
-        except:
-            pass
+                last_height = driver.execute_script("return document.body.scrollHeight")
 
-        if element:
-            # download image
-            for img_tag in driver.find_elements(By.TAG_NAME, 'img'):
-                imageUrl = None
-                try:
-                    imageUrl = img_tag.get_attribute('src')
-                except:
-                    pass
-                if imageUrl:
-                    imageUrl = urljoin(pageUrl, imageUrl)
-                    fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize)
-                    if fileName and not fileName in fileUrls:
-                        if usePageUrl:
-                            fileUrls[fileName] = pageUrl
-                        elif url:
-                            fileUrls[fileName] = url
+                while True:
+                    driver.execute_script("window.scrollTo(0, document.body.scrollHeight)")
+                    time.sleep(scrollPauseTime)
 
-            # get links to other pages
-            links = driver.find_elements(By.TAG_NAME, 'a')
-            for link in links:
-                if link:
-                    href = None
-                    try:
-                        href = link.get_attribute('href')
-                    except:
-                        continue #print("Error occured (href is not found in a tag) at "+str(link))
-                    if href and self.isSameDomain(pageUrl, href, baseUrl):
-                        if not href in pageUrls:
-                            pageUrls.add(href)
-                            if href.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
-                                fileName, url = self.downloadImage(href, outputPath, minDownloadSize)
-                                if fileName and not fileName in fileUrls:
-                                    if usePageUrl:
-                                        fileUrls[fileName] = pageUrl
-                                    elif url:
-                                        fileUrls[fileName] = url
-                            else:
-                                self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
+                    WebDriverWait(driver, timeOut).until(EC.presence_of_element_located((By.TAG_NAME, 'a')))
+                    WebDriverWait(driver, timeOut).until(EC.presence_of_element_located((By.TAG_NAME, 'img')))
 
+                    # download image
+                    for img_tag in driver.find_elements(By.TAG_NAME, 'img'):
+                        imageUrl = None
+                        try:
+                            imageUrl = img_tag.get_attribute('src')
+                        except:
+                            pass
+                        if imageUrl:
+                            imageUrl = urljoin(pageUrl, imageUrl)
+                            fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize)
+                            if fileName and not fileName in fileUrls:
+                                if usePageUrl:
+                                    fileUrls[fileName] = pageUrl
+                                elif url:
+                                    fileUrls[fileName] = url
 
+                    # get links to other pages
+                    links = driver.find_elements(By.TAG_NAME, 'a')
+                    for link in links:
+                        if link:
+                            href = None
+                            try:
+                                href = link.get_attribute('href')
+                            except:
+                                continue #print("Error occured (href is not found in a tag) at "+str(link))
+                            if href and self.isSameDomain(pageUrl, href, baseUrl):
+                                if not href in pageUrls:
+                                    pageUrls.add(href)
+                                    ext = WebPageImageDownloader.getExtFromUrl(href)
+                                    if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
+                                        fileName, url = self.downloadImage(href, outputPath, minDownloadSize)
+                                        if fileName and not fileName in fileUrls:
+                                            if usePageUrl:
+                                                fileUrls[fileName] = pageUrl
+                                            elif url:
+                                                fileUrls[fileName] = url
+                                    else:
+                                        self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
+                    new_height = driver.execute_script("return document.body.scrollHeight")
+                    if new_height == last_height:
+                        break
+                    last_height = new_height
+            except Exception as e:
+                pass #print(f"Error while processing {pageUrl}: {e}")
 
 
     def downloadImagesFromWebPages(self, urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
