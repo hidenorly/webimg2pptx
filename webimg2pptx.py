@@ -61,15 +61,18 @@ class WebPageImageDownloader:
         self._driver = tempDriver
 
     def close(self):
-        try:
             if self.driver:
-                self.driver.close()
+                try:
+                    self.driver.close()
+                except:
+                    pass
                 self.driver = None
             if self._driver:
-                self._driver.close()
+                try:
+                    self._driver.close()
+                except:
+                    pass
                 self._driver = None
-        except:
-            pass
 
     def getRandomFilename(self):
         letters = string.ascii_lowercase
@@ -156,18 +159,20 @@ class WebPageImageDownloader:
                 else:
                     # fallback...
                     print(f'Failed to download {imageUrl}')
-                    #try:
-                    #    self.driver.get(imageUrl)
-                    #    filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
-                    #    filePath=os.path.join(outputPath, filename)
-                    #    print(f'filename:{filename}')
-                    #    self.driver.save_screenshot(filePath)
-                    #    print(f'screenshot done at {filePath}')
-                    #    url = imageUrl
-                    #except Exception as e:
-                    #    print(f"Error while processing {imageUrl}: {e}")
+                    try:
+                        pos = imageUrl.find("?")
+                        if pos!=-1:
+                            imageUrl = imageUrl[0:pos]
+                        self.driver.get(imageUrl)
+                        _filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
+                        filePath=os.path.join(outputPath, _filename)
+                        self.driver.save_screenshot(filePath)
+                        if os.path.exists(filePath):
+                            url = imageUrl
+                            filename = _filename
 
-
+                    except Exception as e:
+                        print(f"Error while processing {imageUrl}: {e}")
         return filename, url
 
     def isSameDomain(self, url1, url2, baseUrl=""):
@@ -196,6 +201,8 @@ class WebPageImageDownloader:
 
     def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut,  scrollPauseTime = 2):
         driver = self.driver
+        _imageUrls=[]
+        _pageUrls=[]
 
         if driver==None or depth > maxDepth:
             return
@@ -222,12 +229,7 @@ class WebPageImageDownloader:
                             pass
                         if imageUrl:
                             imageUrl = urljoin(pageUrl, imageUrl)
-                            fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize)
-                            if fileName and not fileName in fileUrls:
-                                if usePageUrl:
-                                    fileUrls[fileName] = pageUrl
-                                elif url:
-                                    fileUrls[fileName] = url
+                            _imageUrls.append(imageUrl)
 
                     # get links to other pages
                     links = driver.find_elements(By.TAG_NAME, 'a')
@@ -243,20 +245,27 @@ class WebPageImageDownloader:
                                     pageUrls.add(href)
                                     ext = WebPageImageDownloader.getExtFromUrl(href)
                                     if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
-                                        fileName, url = self.downloadImage(href, outputPath, minDownloadSize)
-                                        if fileName and not fileName in fileUrls:
-                                            if usePageUrl:
-                                                fileUrls[fileName] = pageUrl
-                                            elif url:
-                                                fileUrls[fileName] = url
+                                        _imageUrls.append(href)
                                     else:
-                                        self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
+                                        _pageUrls.add(href)
                     new_height = driver.execute_script("return document.body.scrollHeight")
                     if new_height == last_height:
                         break
                     last_height = new_height
             except Exception as e:
                 pass #print(f"Error while processing {pageUrl}: {e}")
+
+
+            for imageUrl in _imageUrls:
+                fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize)
+                if fileName and not fileName in fileUrls:
+                    if usePageUrl:
+                        fileUrls[fileName] = pageUrl
+                    elif url:
+                        fileUrls[fileName] = url
+
+            for href in _pageUrls:
+                self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
 
 
     def downloadImagesFromWebPages(self, urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
