@@ -103,7 +103,7 @@ class WebPageImageDownloader:
         return f, filename, filePath
 
 
-    def downloadImage(self, imageUrl, outputPath, minDownloadSize=None):
+    def downloadImage(self, imageUrl, outputPath, minDownloadSize=None, withFullArgUrl=False):
         filename = None
         url = None
         if not imageUrl in globalCache:
@@ -160,9 +160,10 @@ class WebPageImageDownloader:
                     # fallback...
                     print(f'Failed to download {imageUrl}')
                     try:
-                        pos = imageUrl.find("?")
-                        if pos!=-1:
-                            imageUrl = imageUrl[0:pos]
+                        if not withFullArgUrl:
+                            pos = imageUrl.find("?")
+                            if pos!=-1:
+                                imageUrl = imageUrl[0:pos]
                         self.driver.get(imageUrl)
                         _filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
                         filePath=os.path.join(outputPath, _filename)
@@ -199,7 +200,7 @@ class WebPageImageDownloader:
         return str(ext)
 
 
-    def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut,  scrollPauseTime = 2):
+    def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut, withFullArgUrl, scrollPauseTime = 2):
         driver = self.driver
         _imageUrls=[]
         _pageUrls=[]
@@ -257,7 +258,7 @@ class WebPageImageDownloader:
 
 
             for imageUrl in _imageUrls:
-                fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize)
+                fileName, url = self.downloadImage(imageUrl, outputPath, minDownloadSize, withFullArgUrl)
                 if fileName and not fileName in fileUrls:
                     if usePageUrl:
                         fileUrls[fileName] = pageUrl
@@ -265,17 +266,17 @@ class WebPageImageDownloader:
                         fileUrls[fileName] = url
 
             for href in _pageUrls:
-                self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut)
+                self._downloadImagesFromWebPage(fileUrls, pageUrls, href, outputPath, minDownloadSize, baseUrl, maxDepth, depth + 1, usePageUrl, timeOut, withFullArgUrl)
 
 
-    def downloadImagesFromWebPages(self, urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60):
+    def downloadImagesFromWebPages(self, urls, outputPath, minDownloadSize=None, baseUrl="", maxDepth=1, usePageUrl=False, timeOut=60, withFullArgUrl=False):
         fileUrls = {}
 
         driver = self.driver
 
         pageUrls=set()
         for url in urls:
-            self._downloadImagesFromWebPage(fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl, timeOut)
+            self._downloadImagesFromWebPage(fileUrls, pageUrls, url, outputPath, minDownloadSize, baseUrl, maxDepth, 0, usePageUrl, timeOut, withFullArgUrl)
 
         return fileUrls
 
@@ -450,6 +451,7 @@ if __name__ == '__main__':
     parser.add_argument("-p", "--usePageUrl", action='store_true', default=False, help='Use page URL if possible')
     parser.add_argument("-l", "--layout", action='store', default='full', help='Specify layout full or left or right')
     parser.add_argument("-f", "--fullfit", action='store_true', default=False, help='Specify if want to fit within the slide')
+    parser.add_argument("-w", "--withFullArgUrl", action='store_true', default=False, help='Specify if want to use full url with ? argument')
     parser.add_argument('--minSize', type=str, help='Minimum size of images to download (format: WIDTHxHEIGHT)')
     parser.add_argument('--maxDepth', type=int, default=1, help='maximum depth of links to follow')
     parser.add_argument('--baseUrl', type=str, default="", help='Specify base url if you want to restrict download under the baseUrl')
@@ -474,7 +476,7 @@ if __name__ == '__main__':
         os.makedirs(args.tempPath)
 
     downloader = WebPageImageDownloader()
-    fileUrls = downloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl, args.timeOut)
+    fileUrls = downloader.downloadImagesFromWebPages(args.pages, args.tempPath, minDownloadSize, args.baseUrl, args.maxDepth, args.usePageUrl, args.timeOut, args.withFullArgUrl)
     downloader.close()
     downloader = None
 
