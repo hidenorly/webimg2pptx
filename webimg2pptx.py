@@ -164,13 +164,14 @@ class WebPageImageDownloader:
                             pos = imageUrl.find("?")
                             if pos!=-1:
                                 imageUrl = imageUrl[0:pos]
-                        self.driver.get(imageUrl)
-                        _filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
-                        filePath=os.path.join(outputPath, _filename)
-                        self.driver.save_screenshot(filePath)
-                        if os.path.exists(filePath):
-                            url = imageUrl
-                            filename = _filename
+                        if href.startswith("http"):
+                            self.driver.get(imageUrl)
+                            _filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
+                            filePath=os.path.join(outputPath, _filename)
+                            self.driver.save_screenshot(filePath)
+                            if os.path.exists(filePath):
+                                url = imageUrl
+                                filename = _filename
 
                     except Exception as e:
                         print(f"Error while processing {imageUrl}: {e}")
