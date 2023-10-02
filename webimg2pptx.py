@@ -42,6 +42,30 @@ import webcolors
 
 globalCache = {}
 
+class UrlUti:
+    def isSameDomain(url1, url2, baseUrl=""):
+        isSame = urlparse(url1).netloc == urlparse(url2).netloc
+        isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
+        return isSame and isbaseUrl
+
+    def getFilenameFromUrl(url):
+        filename = ""
+        pos = url.find("?")
+        if pos!=-1:
+            url = url[0:pos]
+        pos = url.rfind("/")
+        if pos!=-1:
+            filename = url[pos+1:]
+        return str(filename)
+
+    def getExtFromUrl(url):
+        ext=""
+        filename = UtilUtil.getFilenameFromUrl(url)
+        pos = filename.rfind(".")
+        if pos!=-1:
+            ext = filename[pos:]
+        return str(ext)
+
 
 class WebPageImageDownloader:
     def __init__(self, width=1920, height=1080):
@@ -110,7 +134,7 @@ class WebPageImageDownloader:
             globalCache[imageUrl] = True
             filePath = None
 
-            ext = WebPageImageDownloader.getExtFromUrl(imageUrl)
+            ext = UrlUtil.getExtFromUrl(imageUrl)
             if ext.endswith((".heic", ".HEIC", ".svg")):
                 try:
                     with urllib.request.urlopen(imageUrl) as response:
@@ -166,7 +190,7 @@ class WebPageImageDownloader:
                                 imageUrl = imageUrl[0:pos]
                         if href.startswith("http"):
                             self.driver.get(imageUrl)
-                            _filename = WebPageImageDownloader.getFilenameFromUrl(imageUrl)+".png"
+                            _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
                             filePath=os.path.join(outputPath, _filename)
                             self.driver.save_screenshot(filePath)
                             if os.path.exists(filePath):
@@ -176,29 +200,6 @@ class WebPageImageDownloader:
                     except Exception as e:
                         print(f"Error while processing {imageUrl}: {e}")
         return filename, url
-
-    def isSameDomain(self, url1, url2, baseUrl=""):
-        isSame = urlparse(url1).netloc == urlparse(url2).netloc
-        isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
-        return isSame and isbaseUrl
-
-    def getFilenameFromUrl(url):
-        filename = ""
-        pos = url.find("?")
-        if pos!=-1:
-            url = url[0:pos]
-        pos = url.rfind("/")
-        if pos!=-1:
-            filename = url[pos+1:]
-        return str(filename)
-
-    def getExtFromUrl(url):
-        ext=""
-        filename = WebPageImageDownloader.getFilenameFromUrl(url)
-        pos = filename.rfind(".")
-        if pos!=-1:
-            ext = filename[pos:]
-        return str(ext)
 
 
     def _downloadImagesFromWebPage(self, fileUrls, pageUrls, pageUrl, outputPath, minDownloadSize, baseUrl, maxDepth, depth, usePageUrl, timeOut, withFullArgUrl, scrollPauseTime = 2):
@@ -242,10 +243,10 @@ class WebPageImageDownloader:
                                 href = link.get_attribute('href')
                             except:
                                 continue #print("Error occured (href is not found in a tag) at "+str(link))
-                            if href and self.isSameDomain(pageUrl, href, baseUrl):
+                            if href and UrlUtil.isSameDomain(pageUrl, href, baseUrl):
                                 if not href in pageUrls:
                                     pageUrls.add(href)
-                                    ext = WebPageImageDownloader.getExtFromUrl(href)
+                                    ext = UrlUtil.getExtFromUrl(href)
                                     if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
                                         _imageUrls.append(href)
                                     else:
