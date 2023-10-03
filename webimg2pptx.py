@@ -66,6 +66,9 @@ class UrlUti:
             ext = filename[pos:]
         return str(ext)
 
+    def isValidUrl(url):
+        return str(url).startswith("http")
+
 
 class WebPageImageDownloader:
     def __init__(self, width=1920, height=1080):
@@ -188,7 +191,7 @@ class WebPageImageDownloader:
                             pos = imageUrl.find("?")
                             if pos!=-1:
                                 imageUrl = imageUrl[0:pos]
-                        if href.startswith("http"):
+                        if UrlUtil.isValidUrl(href):
                             self.driver.get(imageUrl)
                             _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
                             filePath=os.path.join(outputPath, _filename)
