@@ -133,7 +133,7 @@ class WebPageImageDownloader:
     def downloadImage(self, imageUrl, outputPath, minDownloadSize=None, withFullArgUrl=False):
         filename = None
         url = None
-        if not imageUrl in globalCache:
+        if UrlUtil.isValidUrl(imageUrl) and not imageUrl in globalCache:
             globalCache[imageUrl] = True
             filePath = None
 
