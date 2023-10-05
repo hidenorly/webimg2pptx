@@ -42,7 +42,7 @@ import webcolors
 
 globalCache = {}
 
-class UrlUti:
+class UrlUtil:
     def isSameDomain(url1, url2, baseUrl=""):
         isSame = urlparse(url1).netloc == urlparse(url2).netloc
         isbaseUrl =  ( (baseUrl=="") or url2.startswith(baseUrl) )
@@ -60,7 +60,7 @@ class UrlUti:
 
     def getExtFromUrl(url):
         ext=""
-        filename = UtilUtil.getFilenameFromUrl(url)
+        filename = UrlUtil.getFilenameFromUrl(url)
         pos = filename.rfind(".")
         if pos!=-1:
             ext = filename[pos:]
