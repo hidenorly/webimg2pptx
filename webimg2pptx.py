@@ -120,11 +120,14 @@ class WebPageImageDownloader:
         if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
             filename = filename+".jpeg"
 
+        if os.path.exists(filename):
+            fileExt = UrlUtil.getExtFromUrl(filename)
+            filename = os.path.join(outputPath, self.getRandomFilename())+fileExt
         try:
             f = open(filename, 'wb')
         except:
-            filename = os.path.join(outputPath, self.getRandomFilename())
-            f = open(filename, 'wb')
+            filename = None
+            f = None
         filePath = filename
         filename = os.path.basename(filename)
         return f, filename, filePath
@@ -149,6 +152,30 @@ class WebPageImageDownloader:
                             f.close()
                 except:
                     pass
+
+                # TODO: Clean up later for .heic case and the others
+                if not filePath or not os.path.exists(filePath):
+                    # fallback...
+                    print(f'Failed to download {imageUrl}')
+                    try:
+                        if not withFullArgUrl:
+                            pos = imageUrl.find("?")
+                            if pos!=-1:
+                                imageUrl = imageUrl[0:pos]
+                        if UrlUtil.isValidUrl(imageUrl):
+                            self.driver.get(imageUrl)
+                            _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
+                            filePath=os.path.join(outputPath, _filename)
+                            if os.path.exists(filePath):
+                                _filename = self.getRandomFilename()+ext
+                                filePath=os.path.join(outputPath, _filename)
+                            self.driver.save_screenshot(filePath)
+                            if os.path.exists(filePath):
+                                url = imageUrl
+                                filename = _filename
+
+                    except Exception as e:
+                        print(f"Error while processing {imageUrl}: {e}")
 
                 if filePath and os.path.exists(filePath):
                     if ext.endswith((".svg")):
@@ -191,7 +218,7 @@ class WebPageImageDownloader:
                             pos = imageUrl.find("?")
                             if pos!=-1:
                                 imageUrl = imageUrl[0:pos]
-                        if UrlUtil.isValidUrl(href):
+                        if UrlUtil.isValidUrl(imageUrl):
                             self.driver.get(imageUrl)
                             _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
                             filePath=os.path.join(outputPath, _filename)
