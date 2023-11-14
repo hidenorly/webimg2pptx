@@ -132,6 +132,33 @@ class WebPageImageDownloader:
         filename = os.path.basename(filename)
         return f, filename, filePath
 
+    def fallbackDownloadImage(self, imageUrl, outputPath, withFullArgUrl=False):
+        filePath = None
+        filename = None
+        url = None
+
+        try:
+            if not withFullArgUrl:
+                pos = imageUrl.find("?")
+                if pos!=-1:
+                    imageUrl = imageUrl[0:pos]
+            if UrlUtil.isValidUrl(imageUrl):
+                self.driver.get(imageUrl)
+                _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
+                filePath=os.path.join(outputPath, _filename)
+                if os.path.exists(filePath):
+                    _filename = self.getRandomFilename()+".png"
+                    filePath=os.path.join(outputPath, _filename)
+                self.driver.save_screenshot(filePath)
+                if os.path.exists(filePath):
+                    url = imageUrl
+                    filename = _filename
+
+        except Exception as e:
+            print(f"Error while processing {imageUrl}: {e}")
+
+        return filename, url, filePath
+
 
     def downloadImage(self, imageUrl, outputPath, minDownloadSize=None, withFullArgUrl=False):
         filename = None
@@ -153,29 +180,13 @@ class WebPageImageDownloader:
                 except:
                     pass
 
-                # TODO: Clean up later for .heic case and the others
                 if not filePath or not os.path.exists(filePath):
                     # fallback...
                     print(f'Failed to download {imageUrl}')
-                    try:
-                        if not withFullArgUrl:
-                            pos = imageUrl.find("?")
-                            if pos!=-1:
-                                imageUrl = imageUrl[0:pos]
-                        if UrlUtil.isValidUrl(imageUrl):
-                            self.driver.get(imageUrl)
-                            _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
-                            filePath=os.path.join(outputPath, _filename)
-                            if os.path.exists(filePath):
-                                _filename = self.getRandomFilename()+ext
-                                filePath=os.path.join(outputPath, _filename)
-                            self.driver.save_screenshot(filePath)
-                            if os.path.exists(filePath):
-                                url = imageUrl
-                                filename = _filename
-
-                    except Exception as e:
-                        print(f"Error while processing {imageUrl}: {e}")
+                    _filename, _url, filePath = self.fallbackDownloadImage(imageUrl, outputPath, withFullArgUrl)
+                    if _filename and _url:
+                        filename = _filename
+                        url = _url
 
                 if filePath and os.path.exists(filePath):
                     if ext.endswith((".svg")):
@@ -213,22 +224,11 @@ class WebPageImageDownloader:
                 else:
                     # fallback...
                     print(f'Failed to download {imageUrl}')
-                    try:
-                        if not withFullArgUrl:
-                            pos = imageUrl.find("?")
-                            if pos!=-1:
-                                imageUrl = imageUrl[0:pos]
-                        if UrlUtil.isValidUrl(imageUrl):
-                            self.driver.get(imageUrl)
-                            _filename = UrlUtil.getFilenameFromUrl(imageUrl)+".png"
-                            filePath=os.path.join(outputPath, _filename)
-                            self.driver.save_screenshot(filePath)
-                            if os.path.exists(filePath):
-                                url = imageUrl
-                                filename = _filename
+                    _filename, _url, filePath = self.fallbackDownloadImage(imageUrl, outputPath, withFullArgUrl)
+                    if _filename and _url:
+                        filename = _filename
+                        url = _url
 
-                    except Exception as e:
-                        print(f"Error while processing {imageUrl}: {e}")
         return filename, url
 
 
@@ -559,21 +559,23 @@ if __name__ == '__main__':
 
     for aPageUrl in pageUrls:
         for filename in perPageImgFiles[aPageUrl]:
-            prs.addSlide()
-            pic = prs.addPicture(os.path.join(args.tempPath, filename), x, y, None, None, True, regionWidth, regionHeight, isFitWihthinRegion)
-            # Add Title
-            if args.title:
-                prs.addText(args.title, x, 0, regionWidth, titleHeight, fontFace, titleSize, True, textAlign, True, args.titleFormat)
-            # Add filename(URL) at bottom
-            if pic and args.addUrl:
-                text = None
-                if not args.usePageUrl:
-                    text = filename
-                if filename in fileUrls:
-                    text = fileUrls[filename]
-                if text:
-                    # TODO: Calc the 0.4
-                    prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4), fontFace, fontSize, True, textAlign)
+            imagePath = os.path.join(args.tempPath, filename)
+            if os.path.exists(imagePath):
+                prs.addSlide()
+                pic = prs.addPicture(imagePath, x, y, None, None, True, regionWidth, regionHeight, isFitWihthinRegion)
+                # Add Title
+                if args.title:
+                    prs.addText(args.title, x, 0, regionWidth, titleHeight, fontFace, titleSize, True, textAlign, True, args.titleFormat)
+                # Add filename(URL) at bottom
+                if pic and args.addUrl:
+                    text = None
+                    if not args.usePageUrl:
+                        text = filename
+                    if filename in fileUrls:
+                        text = fileUrls[filename]
+                    if text:
+                        # TODO: Calc the 0.4
+                        prs.addText(text, x, int(y+regionHeight-Inches(0.4)), regionWidth, Inches(0.4), fontFace, fontSize, True, textAlign)
 
     # --- save the ppt file
     prs.save()
