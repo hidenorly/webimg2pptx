@@ -26,8 +26,7 @@ class ImageUtil:
         filename = os.path.splitext(filename)[0]
         return filename + ext
 
-    def covertToJpeg(imageFile):
-        outFilename = ImageUtil.getFilenameWithExt(imageFile, ".jpeg")
+    def getImage(imageFile):
         image = None
         if imageFile.endswith(('.heic', '.HEIC')):
             try:
@@ -47,8 +46,27 @@ class ImageUtil:
                 image = Image.open(imageFile)
             except:
                 pass
+        return image
+
+    def covertToJpeg(imageFile):
+        outFilename = ImageUtil.getFilenameWithExt(imageFile, ".jpeg")
+        image = ImageUtil.getImage(imageFile)
         if image:
-            image.save(outFilename, "JPEG")
+            try:
+                image = image.convert('RGB')
+                image.save(outFilename, "JPEG")
+            except:
+                pass
+        return outFilename
+
+    def covertToPng(imageFile):
+        outFilename = ImageUtil.getFilenameWithExt(imageFile, ".png")
+        image = ImageUtil.getImage(imageFile)
+        if image:
+            try:
+                image.save(outFilename, "PNG")
+            except:
+                pass
         return outFilename
 
     def getImageSize(imageFile):
