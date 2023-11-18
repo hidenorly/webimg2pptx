@@ -117,7 +117,7 @@ class WebPageImageDownloader:
         f = None
         filename = self.getSanitizedFilenameFromUrl(url)
         filename = str(os.path.join(outputPath, filename))
-        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
+        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp')):
             filename = filename+".jpeg"
 
         if os.path.exists(filename):
@@ -168,7 +168,7 @@ class WebPageImageDownloader:
             filePath = None
 
             ext = UrlUtil.getExtFromUrl(imageUrl)
-            if ext.endswith((".heic", ".HEIC", ".svg")):
+            if ext.endswith((".heic", ".HEIC", ".svg", ".webp")):
                 try:
                     with urllib.request.urlopen(imageUrl) as response:
                         imgContent = response.read()
@@ -195,12 +195,17 @@ class WebPageImageDownloader:
                         if os.path.exists(newPngPath):
                             filename = newPngPath
                     else:
-                        # .heic, .HEIC
-                        newJpegPath = ImageUtil.covertToJpeg(filePath)
-                        if os.path.exists(newJpegPath):
-                            size = ImageUtil.getImageSize(newJpegPath)
+                        newPath = None
+                        if ext.endswith((".webp")):
+                            # to .png
+                            newPath = ImageUtil.covertToPng(filePath)
+                        else:
+                            # to .jpeg
+                            newPath = ImageUtil.covertToJpeg(filePath)
+                        if os.path.exists(newPath):
+                            size = ImageUtil.getImageSize(newPath)
                             if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
-                                filename = newJpegPath
+                                filename = newPath
             else:
                 # .png, .jpeg, etc.
                 size = None
@@ -211,7 +216,7 @@ class WebPageImageDownloader:
                         # check image size
                         size = ImageUtil.getImageSizeFromChunk(response.content)
                 except:
-                    pass
+                    print(f'failed to get image size at {imageUrl}')
 
                 if response and response.status_code == 200:
                     if minDownloadSize==None or (size and size[0] >= minDownloadSize[0] and size[1] >= minDownloadSize[1]):
@@ -277,7 +282,7 @@ class WebPageImageDownloader:
                                 if not href in pageUrls:
                                     pageUrls.add(href)
                                     ext = UrlUtil.getExtFromUrl(href)
-                                    if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif')):
+                                    if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp')):
                                         _imageUrls.append(href)
                                     else:
                                         _pageUrls.add(href)
@@ -375,7 +380,7 @@ class PowerPointUtil:
         try:
             pic = self.currentSlide.shapes.add_picture(imagePath, x, y)
         except:
-            pass
+            print(f'failed to add {imagePath}')
         if pic:
             if width and height:
                 pic.width = width
