@@ -117,7 +117,7 @@ class WebPageImageDownloader:
         f = None
         filename = self.getSanitizedFilenameFromUrl(url)
         filename = str(os.path.join(outputPath, filename))
-        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp')):
+        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.apng')):
             filename = filename+".jpeg"
 
         if os.path.exists(filename):
