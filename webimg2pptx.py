@@ -1,4 +1,4 @@
-#   Copyright 2023 hidenorly
+#   Copyright 2023, 2024 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -58,12 +58,40 @@ class UrlUtil:
             filename = url[pos+1:]
         return str(filename)
 
+
+    def get_extension_from_mime(mime_type):
+        mime_to_extension = {
+            'image/jpeg': 'jpg',
+            'image/png': 'png',
+            'image/gif': 'gif',
+            'image/bmp': 'bmp',
+            'image/webp': 'webp',
+            'image/svg+xml': 'svg',
+            'image/tiff': 'tiff',
+            'image/x-icon': 'ico'
+        }
+
+        ext = mime_to_extension.get(mime_type, None)
+        if ext:
+            ext = "."+ext
+        return ext
+
     def getExtFromUrl(url):
         ext=""
         filename = UrlUtil.getFilenameFromUrl(url)
         pos = filename.rfind(".")
         if pos!=-1:
             ext = filename[pos:]
+
+        # fallback if url doesn't contain the file extension
+        if not ext:
+            try:
+                response = requests.head(url)
+                content_type = response.headers.get('Content-Type')
+                ext = UrlUtil.get_extension_from_mime(content_type)
+            except:
+                pass
+
         return str(ext)
 
     def isValidUrl(url):
@@ -117,8 +145,11 @@ class WebPageImageDownloader:
         f = None
         filename = self.getSanitizedFilenameFromUrl(url)
         filename = str(os.path.join(outputPath, filename))
-        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.apng')):
-            filename = filename+".jpeg"
+        if not filename.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.apng', '.avif')):
+            ext =  UrlUtil.getExtFromUrl(url)
+            if not ext:
+                ext =".jpeg"
+            filename = filename+ext
 
         if os.path.exists(filename):
             fileExt = UrlUtil.getExtFromUrl(filename)
@@ -168,7 +199,7 @@ class WebPageImageDownloader:
             filePath = None
 
             ext = UrlUtil.getExtFromUrl(imageUrl)
-            if ext.endswith((".heic", ".HEIC", ".svg", ".webp")):
+            if ext.endswith((".heic", ".HEIC", ".svg", ".webp", ".avif")):
                 try:
                     with urllib.request.urlopen(imageUrl) as response:
                         imgContent = response.read()
@@ -196,7 +227,7 @@ class WebPageImageDownloader:
                             filename = newPngPath
                     else:
                         newPath = None
-                        if ext.endswith((".webp")):
+                        if ext.endswith((".webp", ".avif")):
                             # to .png
                             newPath = ImageUtil.covertToPng(filePath)
                         else:
@@ -282,7 +313,7 @@ class WebPageImageDownloader:
                                 if not href in pageUrls:
                                     pageUrls.add(href)
                                     ext = UrlUtil.getExtFromUrl(href)
-                                    if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp')):
+                                    if ext.endswith(('.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp', '.avif')):
                                         _imageUrls.append(href)
                                     else:
                                         _pageUrls.add(href)
