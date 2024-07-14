@@ -1,4 +1,4 @@
-#   Copyright 2023 hidenorly
+#   Copyright 2023, 2024 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -18,6 +18,10 @@ from PIL import Image
 from io import BytesIO
 import cairosvg
 import pyheif
+try:
+    import pillow_avif
+except
+    pass
 
 import webcolors
 
