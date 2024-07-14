@@ -20,7 +20,7 @@ import cairosvg
 import pyheif
 try:
     import pillow_avif
-except
+except:
     pass
 
 import webcolors
