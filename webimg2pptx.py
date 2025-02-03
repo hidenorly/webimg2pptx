@@ -1,4 +1,4 @@
-#   Copyright 2023, 2024 hidenorly
+#   Copyright 2023, 2024, 2025 hidenorly
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -530,7 +530,7 @@ if __name__ == '__main__':
     parser.add_argument('--fontSize', type=float, default=18.0, help='Specify font size (pt) if necessary')
     parser.add_argument('--title', type=str, default=None, help='Specify title if necessary')
     parser.add_argument('--titleSize', type=float, default=None, help='Specify title size if necessary')
-    parser.add_argument('--titleFormat', type=str, default=None, help='Specify title format if necessary e.g. color:white,face:Calibri,size:40,bold')
+    parser.add_argument('--titleFormat', type=str, default=None, help='Specify title format if necessary e.g. color:black,face:游ゴシック,size:40,bold')
     args = parser.parse_args()
     if args.usePageUrl:
         args.addUrl = True
